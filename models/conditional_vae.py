@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class VAE(nn.Module):
+class CVAE(nn.Module):
     def __init__(self, input_channels, latent_dim=32, num_classes=15):
         super(VAE, self).__init__()
         self.input_channels = input_channels

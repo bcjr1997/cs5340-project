@@ -3,7 +3,7 @@ import os
 import json
 import logging
 import torch
-from models.vae import VAE
+from models.conditional_vae import CVAE
 from utils.dataset.nih import NIHChestDataset
 from torch.utils.data import DataLoader
 from torch.optim import Adam
@@ -13,7 +13,7 @@ from tqdm import tqdm
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-def train_vae(args):
+def train_cvae(args):
     # Argparse
     SAVE_PATH = args.save_path
     DATASET_PATH = args.dataset_path
@@ -25,8 +25,8 @@ def train_vae(args):
     PATHS = [SAVE_PATH, MODEL_WEIGHTS_PATH]
     
     for path in PATHS:
-        if not os.path.exists(SAVE_PATH):
-            os.makedirs(SAVE_PATH)
+        if not os.path.exists(path):
+            os.makedirs(path)
         
     # Save current args to output
     with open(f"{SAVE_PATH}/argsparse_config.json", 'w') as file:
@@ -34,7 +34,7 @@ def train_vae(args):
         file.close()
 
     # Prepare Model
-    model = VAE()
+    model = CVAE()
 
     # Prepare Dataset
     train_dataset = NIHChestDataset()
@@ -59,12 +59,9 @@ def train_vae(args):
             total_loss += loss.item()
 
         logging.info(f"Epoch [{epoch+1}/{NUM_EPOCHS}], Loss: {total_loss/len(train_dataloader):.4f}")
-        torch.save(model.state_dict(), os.path.join(MODEL_WEIGHTS_PATH, f"vae_weights_{epoch + 1}.pth"))
+        torch.save(model.state_dict(), os.path.join(MODEL_WEIGHTS_PATH, f"cvae_weights_{epoch + 1}.pth"))
         logging.info("Model Saved")
     logging.info("Training complete!")
-
-
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Training Script')
@@ -79,4 +76,4 @@ if __name__ == '__main__':
     parser.add_argument('--image_dim', type=int, default=256)
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
-    train_vae(args)
+    train_cvae(args)
