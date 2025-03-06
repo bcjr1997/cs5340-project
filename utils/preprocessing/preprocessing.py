@@ -40,19 +40,28 @@ def preprocess_dataset(args):
         
     # List all files
     dataset = {
-        'image_paths': [],
-        'labels': []
+        'image_path': [],
+        'label': []
     }
     for folder in os.listdir(DATASET_PATH):
         if 'images_' in folder:
             curr_path = os.path.join(DATASET_PATH, folder, 'images')
             images = os.listdir(curr_path)
-            dataset['image_paths'].extend([os.path.join(curr_path, img_name) for img_name in images])
+            dataset['image_path'].extend([os.path.join(curr_path, img_name) for img_name in images])
             label_idx = int(re.search('\d+', folder).group())
-            dataset['labels'].extend([LABELS[label_idx] for _ in range(len(images))])
+            dataset['label'].extend([LABELS[label_idx] for _ in range(len(images))])
 
     df = pd.DataFrame(dataset)
-    df.to_json(os.path.join(SAVE_PATH, 'parsed_dataset.json'))
+    min_count = df['label'].value_counts().min()
+    df = df.groupby('label').apply(lambda x: x.sample(n=min_count, random_state=42)).reset_index(drop=True)
+    train_df = df.sample(frac=0.8, random_state=42)
+    dev_test_df = df.drop(train_df.index)
+    dev_df = dev_test_df.sample(frac=0.5, random_state=42)
+    test_df = dev_test_df.drop(dev_df.index)
+    logging.info(f"Dataset Length: {len(train_df)} (Train) | {len(dev_df)} (Dev) | {len(test_df)} (Test)")
+    train_df.reset_index(drop=True).to_json(os.path.join(SAVE_PATH, 'train_dataset.json'))
+    dev_df.reset_index(drop=True).to_json(os.path.join(SAVE_PATH, 'dev_dataset.json'))
+    test_df.reset_index(drop=True).to_json(os.path.join(SAVE_PATH, 'test_dataset.json'))
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Training Script')
