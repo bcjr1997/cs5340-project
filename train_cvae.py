@@ -112,10 +112,10 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default=os.path.join('model_outputs', 'cvae'))
 
     # Training Configuration
-    parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--learning_rate', type=float, default=3e-4)
-    parser.add_argument('--batch_size', type=int, default=128)
-    parser.add_argument('--image_dim', type=int, default=256)
+    parser.add_argument('--batch_size', type=int, default=256)
+    parser.add_argument('--image_dim', type=int, default=224)
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
     train_vae(args)
