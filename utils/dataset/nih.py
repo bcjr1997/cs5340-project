@@ -1,7 +1,6 @@
 from PIL import Image
 from torch.utils.data import Dataset
 import torch
-import torch.nn.functional as F
 
 class NIHChestDataset(Dataset):
     def __init__(self, dataframe, transform, noisy_transform):
@@ -22,5 +21,4 @@ class NIHChestDataset(Dataset):
         noisy_img = self.noisy_transform(img)
         clean_img = self.transform(img)
         label = torch.Tensor([1 if label == x else 0 for x in self.classes]).long()
-        label = F.one_hot(label, num_classes=len(self.classes))
         return noisy_img, clean_img, label

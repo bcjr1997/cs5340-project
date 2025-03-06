@@ -54,7 +54,7 @@ class CVAE(nn.Module):
         z = self.reparameterize(mean, log_variance)  # Approximate Z via Reparameterization
         
         # Concatenate labels with latent vector before decoding
-        z = torch.cat([z, labels.view(batch_size, self.num_classes)], dim=1)
+        z = torch.cat([z, labels[:, :, 0, 0]], dim=1)
         dec_input = self.decoder_input(z)  # Expand latent vector to feature map size
         dec_input = dec_input.view(batch_size, 128, self.feature_map_size, self.feature_map_size)
         dec = self.decoder(dec_input)
