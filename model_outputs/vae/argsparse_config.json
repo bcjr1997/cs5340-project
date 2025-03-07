@@ -1,1 +1,1 @@
-{"train_dataset_path": "datasets/nih_custom/train_dataset.json", "dev_dataset_path": "datasets/nih_custom/dev_dataset.json", "save_path": "model_outputs/vae", "epochs": 10, "learning_rate": 0.0003, "batch_size": 256, "image_dim": 224, "device": "cuda"}
+{"train_dataset_path": "datasets/nih_custom/train_dataset.json", "dev_dataset_path": "datasets/nih_custom/dev_dataset.json", "save_path": "model_outputs/vae", "epochs": 1, "learning_rate": 0.0003, "batch_size": 256, "image_dim": 224, "device": "cuda"}

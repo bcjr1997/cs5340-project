@@ -3,3 +3,6 @@ env
 
 # Datasets
 datasets
+
+# Model weights
+model_outputs
