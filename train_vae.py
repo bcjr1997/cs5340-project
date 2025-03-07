@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from tqdm import tqdm
 from torchvision import transforms
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -68,6 +69,10 @@ def train_vae(args):
 
     # Optimizer
     optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
+    
+    # Metrics
+    psnr = PeakSignalNoiseRatio()
+    ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
 
     # Train Model
     for epoch in range(NUM_EPOCHS):
@@ -78,6 +83,8 @@ def train_vae(args):
             noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
             denoised_images, mean, log_variance = model(noisy_images)
             loss = model.loss_function(denoised_images, clean_images, mean, log_variance) 
+            train_psnr = psnr(denoised_images, clean_images)
+            train_ssim = ssim(denoised_images, clean_images)
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -111,7 +118,7 @@ if __name__ == '__main__':
 
     # Training Configuration
     parser.add_argument('--epochs', type=int, default=1)
-    parser.add_argument('--learning_rate', type=float, default=3e-4)
+    parser.add_argument('--learning_rate', type=float, default=1e-4)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)
     parser.add_argument('--device', type=str, default='cuda')

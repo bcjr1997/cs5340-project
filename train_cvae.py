@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from tqdm import tqdm
 from torchvision import transforms
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -63,19 +64,20 @@ def train_vae(args):
     dev_dataset = NIHChestDataset(dev_df, transform, noisy_transform)
 
     # Prepare Dataloader
-    train_dataloader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, num_workers=4)
-    dev_dataloader = DataLoader(dev_dataset, BATCH_SIZE, shuffle=True, num_workers=4)
+    train_dataloader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True)
+    dev_dataloader = DataLoader(dev_dataset, BATCH_SIZE, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True)
 
     # Optimizer
     optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
     
-    # Progress Bar
-    train_progress_bar = tqdm(train_dataloader)
-    dev_progress_bar = tqdm(dev_dataloader)
+    # Metrics
+    psnr = PeakSignalNoiseRatio()
+    ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
 
     # Train Model
     for epoch in range(NUM_EPOCHS):
         train_total_loss = 0
+        train_progress_bar = tqdm(train_dataloader)
         model.train()
         for noisy_images, clean_images, labels in train_progress_bar:
             noisy_images, clean_images, labels = noisy_images.to(DEVICE), clean_images.to(DEVICE), labels.to(DEVICE)
@@ -88,6 +90,7 @@ def train_vae(args):
             train_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {train_total_loss/len(train_dataloader):.4f}")
         
         dev_total_loss = 0
+        dev_progress_bar = tqdm(dev_dataloader)
         model.eval()
         with torch.no_grad():
             for noisy_images, clean_images, labels in dev_progress_bar:
@@ -112,8 +115,8 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default=os.path.join('model_outputs', 'cvae'))
 
     # Training Configuration
-    parser.add_argument('--epochs', type=int, default=10)
-    parser.add_argument('--learning_rate', type=float, default=3e-4)
+    parser.add_argument('--epochs', type=int, default=1)
+    parser.add_argument('--learning_rate', type=float, default=1e-4)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)
     parser.add_argument('--device', type=str, default='cuda')
