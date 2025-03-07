@@ -11,6 +11,8 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from tqdm import tqdm
 from torchvision import transforms
+from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
+
 
 # Logger setup
 logger = logging.getLogger(__name__)
@@ -62,6 +64,10 @@ def test_vae(args):
     
     # Progress Bar
     test_progress_bar = tqdm(test_dataloader)
+    
+    # Metrics
+    psnr = PeakSignalNoiseRatio().to(DEVICE)
+    ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(DEVICE)
 
     # Train Model
     test_total_loss = 0
@@ -72,8 +78,10 @@ def test_vae(args):
             denoised_images, mean, log_variance = model(noisy_images)
             loss = model.loss_function(denoised_images, clean_images, mean, log_variance) 
             test_total_loss += loss.item()
-            test_progress_bar.set_description(f"Loss: {test_total_loss/len(test_dataloader):.4f}")
-
+            psnr_value = psnr(denoised_images, clean_images).item()
+            ssim_value = ssim(denoised_images, clean_images).item()
+            test_progress_bar.set_description(f"Loss: {test_total_loss/len(test_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Training Script')
     # Data and Save Location

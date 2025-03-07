@@ -71,8 +71,8 @@ def train_vae(args):
     optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
     
     # Metrics
-    psnr = PeakSignalNoiseRatio()
-    ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
+    psnr = PeakSignalNoiseRatio().to(DEVICE)
+    ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(DEVICE)
 
     # Train Model
     for epoch in range(NUM_EPOCHS):
@@ -87,7 +87,9 @@ def train_vae(args):
             loss.backward()
             optimizer.step()
             train_total_loss += loss.item()
-            train_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {train_total_loss/len(train_dataloader):.4f}")
+            psnr_value = psnr(denoised_images, clean_images).item()
+            ssim_value = ssim(denoised_images, clean_images).item()
+            train_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {train_total_loss/len(train_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
         
         dev_total_loss = 0
         dev_progress_bar = tqdm(dev_dataloader)
@@ -97,8 +99,10 @@ def train_vae(args):
                 noisy_images, clean_images, labels = noisy_images.to(DEVICE), clean_images.to(DEVICE), labels.to(DEVICE)
                 denoised_images, mean, log_variance = model(noisy_images, labels)
                 loss = model.loss_function(denoised_images, clean_images, mean, log_variance) 
+                psnr_value = psnr(denoised_images, clean_images).item()
+                ssim_value = ssim(denoised_images, clean_images).item()
                 dev_total_loss += loss.item()
-                dev_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {dev_total_loss/len(dev_dataloader):.4f}")
+                dev_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {dev_total_loss/len(dev_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
 
         torch.save(model.state_dict(), os.path.join(MODEL_WEIGHTS_PATH, f"vae_weights_{epoch + 1}.pth"))
         logging.info("Model Saved")
