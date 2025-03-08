@@ -139,6 +139,9 @@ def train_vae(args):
         
         torch.save(model.state_dict(), os.path.join(MODEL_WEIGHTS_PATH, f"cvae_weights_{epoch + 1}.pth"))
         logging.info("Model Saved")
+        
+    result_df = pd.DataFrame(history)
+    result_df.to_json(os.path.join(SAVE_PATH, 'results.json'))
     logging.info("Training complete!")
 
 
@@ -151,7 +154,7 @@ if __name__ == '__main__':
     parser.add_argument('--dev_images_path', type=str, default=os.path.join('datasets', 'nih_custom', 'dev_images.npy'))
     parser.add_argument('--train_labels_path', type=str, default=os.path.join('datasets', 'nih_custom', 'train_labels.npy'))
     parser.add_argument('--dev_labels_path', type=str, default=os.path.join('datasets', 'nih_custom', 'dev_labels.npy'))
-    parser.add_argument('--save_path', type=str, default=os.path.join('model_outputs', 'vae'))
+    parser.add_argument('--save_path', type=str, default=os.path.join('model_outputs', 'cvae'))
 
     # Training Configuration
     parser.add_argument('--epochs', type=int, default=20)
