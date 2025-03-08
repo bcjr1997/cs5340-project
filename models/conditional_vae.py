@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class CVAE(nn.Module):
-    def __init__(self, image_dim, input_channels=1, latent_dim=32, num_classes=12):
+    def __init__(self, image_dim, input_channels=1, latent_dim=256, num_classes=12):
         super(CVAE, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
