@@ -3,6 +3,7 @@ import os
 import json
 import logging
 import torch
+import numpy as np
 import pandas as pd
 import torchvision.transforms.v2 as transforms_v2
 from models.vae import VAE
@@ -20,8 +21,10 @@ logging.basicConfig(level=logging.INFO)
 def train_vae(args):
     # Argparse
     SAVE_PATH = args.save_path
-    TRAIN_DATASET_PATH = args.train_dataset_path
-    DEV_DATASET_PATH = args.dev_dataset_path
+    TRAIN_IMAGES_PATH = args.train_images_path
+    TRAIN_LABELS_PATH = args.train_labels_path
+    DEV_IMAGES_PATH = args.dev_images_path
+    DEV_LABELS_PATH = args.dev_labels_path
     BATCH_SIZE = args.batch_size
     NUM_EPOCHS = args.epochs
     LEARNING_RATE = args.learning_rate
@@ -43,25 +46,22 @@ def train_vae(args):
     model = VAE(IMAGE_DIM).to(DEVICE)
     
     noisy_transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.ToTensor(),
         transforms_v2.GaussianNoise(),
         transforms.Normalize(0.5, 0.5),
     ])
     
     transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.ToTensor(),
         transforms.Normalize(0.5, 0.5),
     ])
 
     # Prepare Dataset
-    train_df = pd.read_json(TRAIN_DATASET_PATH)
-    train_dataset = NIHChestDataset(train_df, transform, noisy_transform)
-    dev_df = pd.read_json(DEV_DATASET_PATH)
-    dev_dataset = NIHChestDataset(dev_df, transform, noisy_transform)
+    train_images, train_labels = np.load(TRAIN_IMAGES_PATH), np.load(TRAIN_LABELS_PATH)
+    dev_images, dev_labels = np.load(DEV_IMAGES_PATH), np.load(DEV_LABELS_PATH)
+    train_dataset = NIHChestDataset(train_images, train_labels, transform, noisy_transform)
+    dev_images, dev_labels = np.load(DEV_IMAGES_PATH), np.load(DEV_LABELS_PATH)
+    dev_dataset = NIHChestDataset(dev_images, dev_labels, transform, noisy_transform)
 
     # Prepare Dataloader
     train_dataloader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True)
@@ -114,8 +114,10 @@ def train_vae(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Training Script')
     # Data and Save Location
-    parser.add_argument('--train_dataset_path', type=str, default=os.path.join('datasets', 'nih_custom', 'train_dataset.json'))
-    parser.add_argument('--dev_dataset_path', type=str, default=os.path.join('datasets', 'nih_custom', 'dev_dataset.json'))
+    parser.add_argument('--train_images_path', type=str, default=os.path.join('datasets', 'nih_custom', 'train_images.npy'))
+    parser.add_argument('--dev_images_path', type=str, default=os.path.join('datasets', 'nih_custom', 'dev_images.npy'))
+    parser.add_argument('--train_labels_path', type=str, default=os.path.join('datasets', 'nih_custom', 'train_labels.npy'))
+    parser.add_argument('--dev_labels_path', type=str, default=os.path.join('datasets', 'nih_custom', 'dev_labels.npy'))
     parser.add_argument('--save_path', type=str, default=os.path.join('model_outputs', 'vae'))
 
     # Training Configuration
