@@ -3,22 +3,31 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class VAE(nn.Module):
-    def __init__(self, image_dim, input_channels=1, latent_dim=256):
+    def __init__(self, image_dim, input_channels=1, latent_dim=128):
         super(VAE, self).__init__()
         self.input_channels = input_channels
         self.latent_dim = latent_dim
         self.image_dim = image_dim
-        self.feature_map_size = self.image_dim // 8  # 2 * 3 Conv Layers
-        self.flattened_dim = 128 * self.feature_map_size ** 2
+        self.feature_map_size = self.image_dim // (2 * 5)  # 2 * 3 Conv Layers
+        self.flattened_dim = 25088 # Hardcoded
 
         # Encoder q(z|x)
         self.encoder = nn.Sequential(
             nn.Conv2d(self.input_channels, 32, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(32, 32 * 2, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 2),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(32 * 2, 32 * 4, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 4),
             nn.ReLU(),
+            nn.Conv2d(32 * 4, 32 * 8, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 8),
+            nn.ReLU(),
+            nn.Conv2d(32 * 8, 32 * 16, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 16),
+            nn.ReLU()
         )
 
         # Mean and Log Variance
@@ -30,12 +39,19 @@ class VAE(nn.Module):
 
         # Decoder p(x|z)
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(32 * 16, 32 * 8, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 8),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(32 * 8, 32 * 4, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 4),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1),
-            nn.Sigmoid()
+            nn.ConvTranspose2d(32 * 4, 32 * 2, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32 * 2),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32 * 2, 32, kernel_size=4, stride=2, padding=1),
+            nn.BatchNorm2d(32),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1)
         )
 
     def reparameterize(self, mean, log_variance):
@@ -51,12 +67,13 @@ class VAE(nn.Module):
         z = self.reparameterize(mean, log_variance)  # Approximate Z via Reparameterization
         
         dec_input = self.decoder_input(z)  # Expand latent vector to feature map size
-        dec_input = dec_input.view(batch_size, 128, self.feature_map_size, self.feature_map_size)
+        dec_input = dec_input.view(batch_size, 32 * 16, 7, 7)
         dec = self.decoder(dec_input)
         
         return dec, mean, log_variance
 
     def loss_function(self, denoised_x, clean_x, mean, log_variance):
-        reconstruction_loss = F.mse_loss(denoised_x, clean_x)
+        loss_fn = nn.BCEWithLogitsLoss() # nn.Sigmoid + BCELoss
+        reconstruction_loss = loss_fn(denoised_x, clean_x)
         kl_divergence_loss = -0.5 * torch.sum(1 + log_variance - mean.pow(2) - log_variance.exp())
         return reconstruction_loss + kl_divergence_loss

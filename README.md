@@ -7,7 +7,8 @@
 4. scikit-learn
 5. tqdm
 6. pytorch-lightning
-7. pytorch <- Install based on your configuration 
+7. lightning-uq-box
+8. pytorch <- Install based on your configuration 
 
 ### Dataset Setup
 1. Download the dataset from https://www.kaggle.com/datasets/nih-chest-xrays/data?resource=download

@@ -20,15 +20,24 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 def save_images(epoch, noisy, clean, denoised, save_path):
-    """ Save sample images for visualization."""
-    os.makedirs(save_path, exist_ok=True)
-    fig, axes = plt.subplots(3, min(5, noisy.shape[0]), figsize=(12, 6))
+    num_samples = min(5, noisy.shape[0])
+    fig, axes = plt.subplots(3, num_samples, figsize=(12, 6))
+
     titles = ["Noisy", "Clean", "Denoised"]
     for i, img_set in enumerate([noisy, clean, denoised]):
-        for j in range(min(5, img_set.shape[0])):
-            axes[i, j].imshow(img_set[j].squeeze(), cmap='gray')
+        for j in range(num_samples):
+            img_to_display = (img_set[j] - img_set[j].min()) / (img_set[j].max() - img_set[j].min())  # ✅ Normalize to [0,1]
+            axes[i, j].imshow(img_to_display.squeeze(0), cmap='gray')  # ✅ Ensure correct shape
             axes[i, j].axis('off')
-        axes[i, 0].set_ylabel(titles[i], fontsize=12)
+    
+    # ✅ Set labels correctly even if axes is 1D
+    if len(axes.shape) == 1:
+        for i in range(3):
+            axes[i].set_ylabel(titles[i], fontsize=12)
+    else:
+        for i in range(3):
+            axes[i, 0].set_ylabel(titles[i], fontsize=12)
+    
     plt.tight_layout()
     plt.savefig(os.path.join(save_path, f'epoch_{epoch}.png'))
     plt.close()
@@ -63,12 +72,12 @@ def train_vae(args):
     noisy_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms_v2.GaussianNoise(),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0, 1)
     ])
     
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0, 1)
     ])
 
     # Prepare Dataset
