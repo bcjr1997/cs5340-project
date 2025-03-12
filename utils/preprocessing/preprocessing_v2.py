@@ -8,18 +8,14 @@ import numpy as np
 import cv2
 from multiprocessing import Pool, cpu_count
 from tqdm import tqdm
+from utils.constants.labels import RAW_LABELS
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 # Constants
-LABELS = {
-    1: 'Atelectasis', 2: 'Cardiomegaly', 3: 'Effusion', 4: 'Inflitration',
-    5: 'Mass', 6: 'Nodule', 7: 'Pneumonia', 8: 'Pneumothorax',
-    9: 'Consolidation', 10: 'Edema', 11: 'Emphysema', 12: 'Fibrosis'
-}
-label_mapping = {label: idx for idx, label in enumerate(LABELS.values())}  # Convert labels to numeric
+label_mapping = {label: idx for idx, label in enumerate(RAW_LABELS.values())}  # Convert labels to numeric
 
 def process_image(args):
     img_path, label, image_dim = args
@@ -61,7 +57,7 @@ def preprocess_dataset(args):
             label_idx = int(re.search(r'\d+', folder).group())
             for img_name in images:
                 img_path = os.path.join(curr_path, img_name)
-                dataset.append((img_path, LABELS[label_idx], IMAGE_DIM))
+                dataset.append((img_path, RAW_LABELS[label_idx], IMAGE_DIM))
     
     logger.info(f"Processing {len(dataset)} images using {cpu_count()} processes...")
     

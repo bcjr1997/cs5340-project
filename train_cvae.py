@@ -13,23 +13,42 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from tqdm import tqdm
 from torchvision import transforms
+from utils.constants.labels import REVERSED_PYTORCH_LABELS
 from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMeasure
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
-def save_images(epoch, noisy, clean, denoised, save_path):
-    """ Save sample images for visualization."""
-    os.makedirs(save_path, exist_ok=True)
-    fig, axes = plt.subplots(3, min(5, noisy.shape[0]), figsize=(12, 6))
-    titles = ["Noisy", "Clean", "Denoised"]
-    for i, img_set in enumerate([noisy, clean, denoised]):
-        for j in range(min(5, img_set.shape[0])):
-            axes[i, j].imshow(img_set[j].squeeze(), cmap='gray')
-            axes[i, j].axis('off')
+def save_images(epoch, noisy, clean, denoised, labels, save_path):
+    labels = np.argmax(labels, axis=1)  # Convert one-hot labels to class indices
+    unique_labels, indices = np.unique(labels, return_index=True)
+
+    # ✅ Ensure correct selection along axis 0
+    noisy = np.take(noisy, indices, axis=0)
+    clean = np.take(clean, indices, axis=0)
+    denoised = np.take(denoised, indices, axis=0)
+
+    fig, axes = plt.subplots(3, len(unique_labels), figsize=(20, 10))
+    titles = ["Clean", "Noisy", "Denoised"]
+
+    for i, img_set in enumerate([clean, noisy, denoised]):
+        for j, img in enumerate(img_set):
+            axes[i, j].imshow(img.squeeze(), cmap='gray')  # ✅ Ensure grayscale display
+            axes[i, j].set_xticks([])
+            axes[i, j].set_yticks([])
+            axes[i, j].set_frame_on(False)
+
+    # ✅ Fix iteration over `titles` (use `len(titles)`)
+    for i in range(len(titles)):
         axes[i, 0].set_ylabel(titles[i], fontsize=12)
+
+    # ✅ Fix iteration over `unique_labels`
+    for j in range(len(unique_labels)):
+        axes[2, j].set_xlabel(REVERSED_PYTORCH_LABELS[unique_labels[j]], fontsize=12)
+
     plt.tight_layout()
+    os.makedirs(save_path, exist_ok=True)  # ✅ Ensure directory exists
     plt.savefig(os.path.join(save_path, f'epoch_{epoch}.png'))
     plt.close()
 
@@ -48,7 +67,8 @@ def train_vae(args):
     NUM_WORKERS = args.num_workers
     BETA_WEIGHTAGE = args.beta_weightage
     MODEL_WEIGHTS_PATH = os.path.join(SAVE_PATH, 'model_weights')
-    PATHS = [SAVE_PATH, MODEL_WEIGHTS_PATH]
+    SAVE_IMAGE_PATH = os.path.join(SAVE_PATH, 'sample_images')
+    PATHS = [SAVE_PATH, MODEL_WEIGHTS_PATH, SAVE_IMAGE_PATH]
     
     for path in PATHS:
         if not os.path.exists(path):
@@ -117,6 +137,7 @@ def train_vae(args):
         dev_progress_bar = tqdm(dev_dataloader)
         model.eval()
         with torch.no_grad():
+            final_noisy_images, final_clean_images, final_denoised_images, final_labels = None, None, None, None
             for noisy_images, clean_images, labels in dev_progress_bar:
                 noisy_images, clean_images, labels = noisy_images.to(DEVICE), clean_images.to(DEVICE), labels.to(DEVICE)
                 denoised_images, mean, log_variance = model(noisy_images, labels)
@@ -128,8 +149,18 @@ def train_vae(args):
                 dev_total_loss += loss.item()
                 dev_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {dev_total_loss/len(dev_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
 
-                save_images(epoch, noisy_images.cpu().numpy(), clean_images.cpu().numpy(), denoised_images.cpu().numpy(), os.path.join(SAVE_PATH, 'sample_images'))
-                
+                if final_noisy_images is None:
+                    final_noisy_images = np.array(noisy_images.cpu().detach().numpy())
+                    final_clean_images = np.array(clean_images.cpu().detach().numpy())
+                    final_denoised_images = np.array(denoised_images.cpu().detach().numpy())
+                    final_labels = np.array(labels.cpu().detach().numpy())
+                else:
+                    final_noisy_images = np.concatenate((final_noisy_images, noisy_images.cpu().detach().numpy()))
+                    final_clean_images = np.concatenate((final_clean_images, clean_images.cpu().detach().numpy()))
+                    final_denoised_images = np.concatenate((final_denoised_images, denoised_images.cpu().detach().numpy()))
+                    final_labels = np.concatenate((final_labels, labels.cpu().detach().numpy()))
+
+        save_images(epoch, final_noisy_images, final_clean_images, final_denoised_images, final_labels, SAVE_IMAGE_PATH)       
         
         history["epoch"].append(epoch + 1)
         history["train_loss"].append(train_total_loss / len(train_dataloader))

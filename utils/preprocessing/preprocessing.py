@@ -4,26 +4,11 @@ import json
 import logging
 import re
 import pandas as pd
+from utils.constants.labels import RAW_LABELS
 
 # Logger setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
-
-# Constants
-LABELS = {
-    1: 'Atelectasis',
-    2: 'Cardiomegaly',
-    3: 'Effusion',
-    4: 'Inflitration',
-    5: 'Mass',
-    6: 'Nodule',
-    7: 'Pneumonia',
-    8: 'Pneumothorax',
-    9: 'Consolidation',
-    10: 'Edema',
-    11: 'Emphysema',
-    12: 'Fibrosis'
-}
 
 def preprocess_dataset(args):
     # Argparse
@@ -49,7 +34,7 @@ def preprocess_dataset(args):
             images = os.listdir(curr_path)
             dataset['image_path'].extend([os.path.join(curr_path, img_name) for img_name in images])
             label_idx = int(re.search('\d+', folder).group())
-            dataset['label'].extend([LABELS[label_idx] for _ in range(len(images))])
+            dataset['label'].extend([RAW_LABELS[label_idx] for _ in range(len(images))])
 
     df = pd.DataFrame(dataset)
     min_count = df['label'].value_counts().min()

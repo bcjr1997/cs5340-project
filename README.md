@@ -13,6 +13,6 @@
 
 ### Dataset Setup
 1. Download the dataset from https://www.kaggle.com/datasets/nih-chest-xrays/data?resource=download
-2. Create a new folder called datasets/nih
-3. Extract the downloaded contents in datasets/nih
-4. At the root of your folder, call python ./utils/preprocessing/preprocessing_v2.py
+2. Create a new folder called "datasets" at the project root. Inside of "datasets", extract the dataset and rename it as "nih".
+4. At the project root, run `python -m utils.preprocessing.preprocessing_v2`
+
