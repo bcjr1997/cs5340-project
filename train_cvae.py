@@ -45,6 +45,8 @@ def train_vae(args):
     LEARNING_RATE = args.learning_rate
     DEVICE = args.device
     IMAGE_DIM = args.image_dim
+    NUM_WORKERS = args.num_workers
+    BETA_WEIGHTAGE = args.beta_weightage
     MODEL_WEIGHTS_PATH = os.path.join(SAVE_PATH, 'model_weights')
     PATHS = [SAVE_PATH, MODEL_WEIGHTS_PATH]
     
@@ -79,8 +81,8 @@ def train_vae(args):
     dev_dataset = NIHChestDataset(dev_images, dev_labels, transform, noisy_transform)
 
     # Prepare Dataloader
-    train_dataloader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True)
-    dev_dataloader = DataLoader(dev_dataset, BATCH_SIZE, shuffle=True, num_workers=8, pin_memory=True, persistent_workers=True)
+    train_dataloader = DataLoader(train_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, pin_memory=True, persistent_workers=True)
+    dev_dataloader = DataLoader(dev_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, pin_memory=True, persistent_workers=True)
 
     # Optimizer
     optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
@@ -100,7 +102,7 @@ def train_vae(args):
         for noisy_images, clean_images, labels in train_progress_bar:
             noisy_images, clean_images, labels = noisy_images.to(DEVICE), clean_images.to(DEVICE), labels.to(DEVICE)
             denoised_images, mean, log_variance = model(noisy_images, labels)
-            loss = model.loss_function(denoised_images, clean_images, mean, log_variance) 
+            loss = model.loss_function(denoised_images, clean_images, mean, log_variance, BETA_WEIGHTAGE) 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
@@ -118,7 +120,7 @@ def train_vae(args):
             for noisy_images, clean_images, labels in dev_progress_bar:
                 noisy_images, clean_images, labels = noisy_images.to(DEVICE), clean_images.to(DEVICE), labels.to(DEVICE)
                 denoised_images, mean, log_variance = model(noisy_images, labels)
-                loss = model.loss_function(denoised_images, clean_images, mean, log_variance) 
+                loss = model.loss_function(denoised_images, clean_images, mean, log_variance, BETA_WEIGHTAGE) 
                 psnr_value = psnr(denoised_images, clean_images).item()
                 ssim_value = ssim(denoised_images, clean_images).item()
                 dev_psnr_total += psnr_value
@@ -158,9 +160,11 @@ if __name__ == '__main__':
 
     # Training Configuration
     parser.add_argument('--epochs', type=int, default=20)
+    parser.add_argument('--beta_weightage', type=float, default=1e-4, help='For scaling KL divergence Loss')
     parser.add_argument('--learning_rate', type=float, default=3e-4)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)
+    parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
     train_vae(args)

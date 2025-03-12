@@ -3,23 +3,28 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class CVAE(nn.Module):
-    def __init__(self, image_dim, input_channels=1, latent_dim=256, num_classes=12):
+    # Input Channel = 1 (Greyscale) + 12 (Num Classes)
+    def __init__(self, image_dim, input_channels=1 + 12, latent_dim=256, num_classes=12):
         super(CVAE, self).__init__()
         self.input_channels = input_channels
         self.num_classes = num_classes
         self.latent_dim = latent_dim
         self.image_dim = image_dim
-        self.feature_map_size = self.image_dim // 8  # 2 * 3 Conv Layers
-        self.flattened_dim = 128 * self.feature_map_size ** 2
+        self.feature_map_size = self.image_dim // (2 * 5)  # 2 * 3 Conv Layers
+        self.flattened_dim = 25088 # Hardcoded
 
         # Encoder q(z|x)
         self.encoder = nn.Sequential(
-            nn.Conv2d(self.input_channels + self.num_classes, 32, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(self.input_channels, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(32, 64, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(32, 32 * 2, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.Conv2d(64, 128, kernel_size=4, stride=2, padding=1),
+            nn.Conv2d(32 * 2, 32 * 4, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Conv2d(32 * 4, 32 * 8, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.Conv2d(32 * 8, 32 * 16, kernel_size=4, stride=2, padding=1),
+            nn.ReLU()
         )
 
         # Mean and Log Variance
@@ -31,11 +36,15 @@ class CVAE(nn.Module):
 
         # Decoder p(x|z)
         self.decoder = nn.Sequential(
-            nn.ConvTranspose2d(128, 64, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(32 * 16, 32 * 8, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(32 * 8, 32 * 4, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1),
+            nn.ConvTranspose2d(32 * 4, 32 * 2, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32 * 2, 32, kernel_size=4, stride=2, padding=1),
+            nn.ReLU(),
+            nn.ConvTranspose2d(32, 1, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid()
         )
 
@@ -56,12 +65,12 @@ class CVAE(nn.Module):
         # Concatenate labels with latent vector before decoding
         z = torch.cat([z, labels[:, :, 0, 0]], dim=1)
         dec_input = self.decoder_input(z)  # Expand latent vector to feature map size
-        dec_input = dec_input.view(batch_size, 128, self.feature_map_size, self.feature_map_size)
+        dec_input = dec_input.view(batch_size, 32 * 16, 7, 7)
         dec = self.decoder(dec_input)
         
         return dec, mean, log_variance
 
-    def loss_function(self, denoised_x, clean_x, mean, log_variance):
+    def loss_function(self, denoised_x, clean_x, mean, log_variance, beta_weightage=1e-4):
         reconstruction_loss = F.mse_loss(denoised_x, clean_x)
-        kl_divergence_loss = -0.5 * torch.sum(1 + log_variance - mean.pow(2) - log_variance.exp())
-        return reconstruction_loss + kl_divergence_loss
+        kl_divergence_loss = -0.5 * torch.mean(1 + log_variance - mean.pow(2) - log_variance.exp())
+        return reconstruction_loss + kl_divergence_loss * beta_weightage
