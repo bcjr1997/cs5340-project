@@ -26,6 +26,8 @@ def test_vae(args):
     BATCH_SIZE = args.batch_size
     DEVICE = args.device
     IMAGE_DIM = args.image_dim
+    NUM_WORKERS = args.num_workers
+    BETA_WEIGHTAGE = args.beta_weightage
     
     if not os.path.exists(SAVE_PATH):
         os.makedirs(SAVE_PATH)
@@ -41,18 +43,14 @@ def test_vae(args):
     model.load_state_dict(torch.load(MODEL_WEIGHTS, weights_only=True))
     
     noisy_transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.ToTensor(),
         transforms_v2.GaussianNoise(),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0, 1)
     ])
     
     transform = transforms.Compose([
-        transforms.Grayscale(),
-        transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.ToTensor(),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0, 1)
     ])
 
     # Prepare Dataset
@@ -60,7 +58,7 @@ def test_vae(args):
     test_dataset = NIHChestDataset(test_df, transform, noisy_transform)
 
     # Prepare Dataloader
-    test_dataloader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True, num_workers=4, persistent_workers=True)
+    test_dataloader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, persistent_workers=True)
     
     # Progress Bar
     test_progress_bar = tqdm(test_dataloader)
@@ -69,14 +67,14 @@ def test_vae(args):
     psnr = PeakSignalNoiseRatio().to(DEVICE)
     ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(DEVICE)
 
-    # Train Model
+    # Eval Model
     test_total_loss = 0
-    model.train()
+    model.eval()
     with torch.no_grad():
         for noisy_images, clean_images, _ in test_progress_bar:
             noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
             denoised_images, mean, log_variance = model(noisy_images)
-            loss = model.loss_function(denoised_images, clean_images, mean, log_variance) 
+            loss = model.loss_function(denoised_images, clean_images, mean, log_variance, BETA_WEIGHTAGE) 
             test_total_loss += loss.item()
             psnr_value = psnr(denoised_images, clean_images).item()
             ssim_value = ssim(denoised_images, clean_images).item()
@@ -90,8 +88,10 @@ if __name__ == '__main__':
 
     # Training Configuration
     parser.add_argument('--model_weights', type=str, default=os.path.join('model_outputs', 'vae', 'model_weights', 'vae_weights_1.pth'))
+    parser.add_argument('--beta_weightage', type=float, default=1e-4, help='For scaling KL divergence Loss')
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)
+    parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
     test_vae(args)
