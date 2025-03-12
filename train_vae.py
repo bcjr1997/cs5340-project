@@ -55,7 +55,8 @@ def train_vae(args):
     DEVICE = args.device
     IMAGE_DIM = args.image_dim
     MODEL_WEIGHTS_PATH = os.path.join(SAVE_PATH, 'model_weights')
-    PATHS = [SAVE_PATH, MODEL_WEIGHTS_PATH]
+    SAVE_IMAGE_PATH = os.path.join(SAVE_PATH, 'sample_images')
+    PATHS = [SAVE_PATH, MODEL_WEIGHTS_PATH, SAVE_IMAGE_PATH]
     
     for path in PATHS:
         if not os.path.exists(path):
@@ -117,6 +118,7 @@ def train_vae(args):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             train_total_loss += loss.item()
             train_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {train_total_loss/len(train_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
         
@@ -135,7 +137,7 @@ def train_vae(args):
                 dev_total_loss += loss.item()
                 dev_progress_bar.set_description(f"Epoch: {epoch + 1} / {NUM_EPOCHS}. Loss: {dev_total_loss/len(dev_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
 
-                save_images(epoch, noisy_images.cpu().numpy(), clean_images.cpu().numpy(), denoised_images.cpu().numpy(), os.path.join(SAVE_PATH, 'sample_images'))
+                save_images(epoch, noisy_images.cpu().numpy(), clean_images.cpu().numpy(), denoised_images.cpu().numpy(), SAVE_IMAGE_PATH)
         
         history["epoch"].append(epoch + 1)
         history["train_loss"].append(train_total_loss / len(train_dataloader))
@@ -151,8 +153,6 @@ def train_vae(args):
     result_df = pd.DataFrame(history)
     result_df.to_json(os.path.join(SAVE_PATH, 'results.json'))
     logging.info("Training complete!")
-
-
 
 
 if __name__ == '__main__':

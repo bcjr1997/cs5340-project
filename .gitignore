@@ -6,3 +6,6 @@ datasets
 
 # Model weights
 model_outputs
+
+# PyCache
+__pycache__

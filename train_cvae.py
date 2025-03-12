@@ -63,12 +63,12 @@ def train_vae(args):
     noisy_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms_v2.GaussianNoise(),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0, 1),
     ])
     
     transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(0.5, 0.5),
+        transforms.Normalize(0, 1),
     ])
 
     # Prepare Dataset

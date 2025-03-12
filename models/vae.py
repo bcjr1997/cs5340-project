@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class VAE(nn.Module):
-    def __init__(self, image_dim, input_channels=1, latent_dim=128):
+    def __init__(self, image_dim, input_channels=1, latent_dim=256):
         super(VAE, self).__init__()
         self.input_channels = input_channels
         self.latent_dim = latent_dim
@@ -14,19 +14,14 @@ class VAE(nn.Module):
         # Encoder q(z|x)
         self.encoder = nn.Sequential(
             nn.Conv2d(self.input_channels, 32, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32),
             nn.ReLU(),
             nn.Conv2d(32, 32 * 2, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 2),
             nn.ReLU(),
             nn.Conv2d(32 * 2, 32 * 4, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 4),
             nn.ReLU(),
             nn.Conv2d(32 * 4, 32 * 8, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 8),
             nn.ReLU(),
             nn.Conv2d(32 * 8, 32 * 16, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 16),
             nn.ReLU()
         )
 
@@ -40,18 +35,15 @@ class VAE(nn.Module):
         # Decoder p(x|z)
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(32 * 16, 32 * 8, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 8),
             nn.ReLU(),
             nn.ConvTranspose2d(32 * 8, 32 * 4, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 4),
             nn.ReLU(),
             nn.ConvTranspose2d(32 * 4, 32 * 2, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32 * 2),
             nn.ReLU(),
             nn.ConvTranspose2d(32 * 2, 32, kernel_size=4, stride=2, padding=1),
-            nn.BatchNorm2d(32),
             nn.ReLU(),
-            nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1)
+            nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1),
+            nn.Sigmoid()
         )
 
     def reparameterize(self, mean, log_variance):
@@ -72,8 +64,7 @@ class VAE(nn.Module):
         
         return dec, mean, log_variance
 
-    def loss_function(self, denoised_x, clean_x, mean, log_variance):
-        loss_fn = nn.BCEWithLogitsLoss() # nn.Sigmoid + BCELoss
-        reconstruction_loss = loss_fn(denoised_x, clean_x)
-        kl_divergence_loss = -0.5 * torch.sum(1 + log_variance - mean.pow(2) - log_variance.exp())
-        return reconstruction_loss + kl_divergence_loss
+    def loss_function(self, denoised_x, clean_x, mean, log_variance, beta_weightage=1e-4):
+        reconstruction_loss = F.mse_loss(denoised_x, clean_x)
+        kl_divergence_loss = -0.5 * torch.mean(1 + log_variance - mean.pow(2) - log_variance.exp())
+        return reconstruction_loss + kl_divergence_loss * beta_weightage
