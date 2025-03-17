@@ -18,6 +18,13 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# keep dropout layer active at inference by setting them to train mode
+def enable_dropout(model):
+    """Enable dropout layers during inference."""
+    for m in model.modules():
+        if m.__class__.__name__.startswith("Dropout"):
+            m.train()
+
 def test_vae(args):
     # Argparse
     SAVE_PATH = args.save_path
@@ -28,6 +35,7 @@ def test_vae(args):
     IMAGE_DIM = args.image_dim
     NUM_WORKERS = args.num_workers
     BETA_WEIGHTAGE = args.beta_weightage
+    MC_PASSES = args.mc_passes  # number of MC forward passes
     
     if not os.path.exists(SAVE_PATH):
         os.makedirs(SAVE_PATH)
@@ -70,15 +78,40 @@ def test_vae(args):
     # Eval Model
     test_total_loss = 0
     model.eval()
+    # with torch.no_grad():
+    #     for noisy_images, clean_images, _ in test_progress_bar:
+    #         noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
+    #         denoised_images, mean, log_variance = model(noisy_images)
+    #         loss = model.loss_function(denoised_images, clean_images, mean, log_variance, BETA_WEIGHTAGE) 
+    #         test_total_loss += loss.item()
+    #         psnr_value = psnr(denoised_images, clean_images).item()
+    #         ssim_value = ssim(denoised_images, clean_images).item()
+    #         test_progress_bar.set_description(f"Loss: {test_total_loss/len(test_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
+    
     with torch.no_grad():
         for noisy_images, clean_images, _ in test_progress_bar:
             noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
-            denoised_images, mean, log_variance = model(noisy_images)
-            loss = model.loss_function(denoised_images, clean_images, mean, log_variance, BETA_WEIGHTAGE) 
+            
+            # Perform MC_PASSES forward passes with dropout enabled
+            predictions = []
+            for _ in range(MC_PASSES):
+                enable_dropout(model)  # Re-enable dropout layers for this pass
+                denoised_images, mean, log_variance = model(noisy_images)
+                predictions.append(denoised_images.unsqueeze(0))
+            
+            # Aggregate predictions over MC_PASSES (compute the mean prediction)
+            predictions = torch.cat(predictions, dim=0)  # shape: [MC_PASSES, batch, channels, H, W]
+            mean_prediction = predictions.mean(dim=0)
+            # Optionally, compute uncertainty:
+            # uncertainty = predictions.std(dim=0)
+            
+            # Compute loss and metrics using the mean prediction
+            loss = model.loss_function(mean_prediction, clean_images, mean, log_variance, BETA_WEIGHTAGE)
             test_total_loss += loss.item()
-            psnr_value = psnr(denoised_images, clean_images).item()
-            ssim_value = ssim(denoised_images, clean_images).item()
+            psnr_value = psnr(mean_prediction, clean_images).item()
+            ssim_value = ssim(mean_prediction, clean_images).item()
             test_progress_bar.set_description(f"Loss: {test_total_loss/len(test_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
+
         
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Training Script')
@@ -93,5 +126,6 @@ if __name__ == '__main__':
     parser.add_argument('--image_dim', type=int, default=224)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda')
+    parser.add_argument('--mc_passes', type=int, default=50, help="Number of Monte Carlo forward passes")
     args = parser.parse_args()
     test_vae(args)
