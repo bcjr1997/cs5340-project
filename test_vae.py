@@ -4,6 +4,7 @@ import json
 import logging
 import torch
 import pandas as pd
+import numpy as np
 import torchvision.transforms.v2 as transforms_v2
 from models.vae import VAE
 from utils.dataset.nih import NIHChestDataset
@@ -29,6 +30,8 @@ def test_vae(args):
     # Argparse
     SAVE_PATH = args.save_path
     TEST_DATASET_PATH = args.test_dataset_path
+    TEST_IMAGES_PATH = args.test_images_path
+    TEST_LABELS_PATH = args.test_labels_path
     MODEL_WEIGHTS = args.model_weights
     BATCH_SIZE = args.batch_size
     DEVICE = args.device
@@ -62,8 +65,11 @@ def test_vae(args):
     ])
 
     # Prepare Dataset
-    test_df = pd.read_json(TEST_DATASET_PATH)
-    test_dataset = NIHChestDataset(test_df, transform, noisy_transform)
+    # test_df = pd.read_json(TEST_DATASET_PATH)
+    # test_dataset = NIHChestDataset(test_df, transform, noisy_transform)
+    # test_images = np.load(TEST_DATASET_PATH)
+    test_images, test_labels = np.load(TEST_IMAGES_PATH), np.load(TEST_LABELS_PATH)
+    test_dataset = NIHChestDataset(test_images, test_labels, transform, noisy_transform)
 
     # Prepare Dataloader
     test_dataloader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, persistent_workers=True)
@@ -117,6 +123,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Training Script')
     # Data and Save Location
     parser.add_argument('--test_dataset_path', type=str, default=os.path.join('datasets', 'nih_custom', 'test_dataset.json'))
+    parser.add_argument('--test_images_path', type=str, default=os.path.join('datasets', 'nih_custom', 'test_images.npy'))
+    parser.add_argument('--test_labels_path', type=str, default=os.path.join('datasets', 'nih_custom', 'test_labels.npy'))
     parser.add_argument('--save_path', type=str, default=os.path.join('model_outputs', 'vae', 'test'))
 
     # Training Configuration
