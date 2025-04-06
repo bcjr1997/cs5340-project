@@ -7,7 +7,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import torchvision.transforms.v2 as transforms_v2
-from models.vae import VAE
+#from models.vae import VAE
+from models.vae_V4 import VAE
 from utils.dataset.nih import NIHChestDataset
 from torch.utils.data import DataLoader
 from torch.optim import Adam
