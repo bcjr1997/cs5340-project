@@ -9,7 +9,7 @@ import numpy as np
 import torchvision.transforms.v2 as transforms_v2
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-from models.vae_V4 import VAE
+from models.vae_V5 import VAE
 from utils.dataset.nih import NIHChestDataset
 from torch.utils.data import DataLoader
 from torch.optim import Adam
