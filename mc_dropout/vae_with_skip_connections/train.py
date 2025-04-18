@@ -194,7 +194,7 @@ if __name__ == '__main__':
 
     # Training Configuration
     parser.add_argument('--epochs', type=int, default=30)
-    parser.add_argument('--noise_std', type=str, default="0.1,0.5,1.0")
+    parser.add_argument('--noise_std', type=str, default="0.1,0.5,0.7")
     parser.add_argument('--learning_rate', type=float, default=3e-4)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)

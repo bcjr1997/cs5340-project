@@ -114,7 +114,7 @@ if __name__ == '__main__':
     # Data and Save Location
     parser.add_argument('--test_images_path', type=str, default=os.path.join('datasets', 'nih_custom', 'test_images.npy'))
     parser.add_argument('--test_labels_path', type=str, default=os.path.join('datasets', 'nih_custom', 'test_labels.npy'))
-    parser.add_argument('--save_path', type=str, default=os.path.join('mc_dropout', 'model_outputs', 'vae_with_skip_connections'))
+    parser.add_argument('--save_path', type=str, default=os.path.join('deep_ensembles', 'model_outputs', 'vae'))
 
     # Inference Configuration
     parser.add_argument('--model_weights', type=str, default=os.path.join('model_outputs', 'vae', 'model_weights', 'vae_weights_1.pth'))

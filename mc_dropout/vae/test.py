@@ -118,7 +118,7 @@ if __name__ == '__main__':
 
     # Inference Configuration
     parser.add_argument('--model_weights', type=str, default=os.path.join('model_outputs', 'vae', 'model_weights', 'vae_weights_1.pth'))
-    parser.add_argument('--noise_std', type=str, default="0.1,0.5,1.0")
+    parser.add_argument('--noise_std', type=str, default="0.1,0.5,0.7")
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)
     parser.add_argument('--num_workers', type=int, default=4)
