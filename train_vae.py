@@ -191,7 +191,7 @@ if __name__ == '__main__':
 
     # Training Configuration
     parser.add_argument('--epochs', type=int, default=20)
-    parser.add_argument('--beta_weightage', type=float, default=1e-4, help='For scaling KL divergence Loss')
+    parser.add_argument('--beta_weightage', type=float, default=1e-4)
     parser.add_argument('--learning_rate', type=float, default=3e-4)
     parser.add_argument('--batch_size', type=int, default=256)
     parser.add_argument('--image_dim', type=int, default=224)
