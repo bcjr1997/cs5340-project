@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class VAE(nn.Module):
-    def __init__(self, image_dim, input_channels=1, latent_dim=256):
+    def __init__(self, image_dim, input_channels=1, latent_dim=256, dropout_rate=0.3):
         super(VAE, self).__init__()
         self.input_channels = input_channels
         self.latent_dim = latent_dim
@@ -15,14 +15,19 @@ class VAE(nn.Module):
         self.encoder = nn.Sequential(
             nn.Conv2d(self.input_channels, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.Conv2d(32, 32 * 2, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.Conv2d(32 * 2, 32 * 4, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.Conv2d(32 * 4, 32 * 8, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.Conv2d(32 * 8, 32 * 16, kernel_size=4, stride=2, padding=1),
-            nn.ReLU()
+            nn.ReLU(),
+            nn.Dropout(dropout_rate)
         )
 
         # Mean and Log Variance
@@ -36,12 +41,16 @@ class VAE(nn.Module):
         self.decoder = nn.Sequential(
             nn.ConvTranspose2d(32 * 16, 32 * 8, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.ConvTranspose2d(32 * 8, 32 * 4, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.ConvTranspose2d(32 * 4, 32 * 2, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.ConvTranspose2d(32 * 2, 32, kernel_size=4, stride=2, padding=1),
             nn.ReLU(),
+            nn.Dropout(dropout_rate),
             nn.ConvTranspose2d(32, self.input_channels, kernel_size=4, stride=2, padding=1),
             nn.Sigmoid()
         )

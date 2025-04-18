@@ -22,6 +22,10 @@ class NIHChestDataset(Dataset):
         clean_img = self.transform(img)
 
         # Convert label to one-hot efficiently
-        label = F.one_hot(torch.tensor(self.labels[index]), num_classes=len(PYTORCH_LABELS)).long()
-        
+        # label = F.one_hot(torch.tensor(self.labels[index]), num_classes=len(PYTORCH_LABELS)).long()
+        label = F.one_hot(
+            torch.tensor(self.labels[index], dtype=torch.long),  # <--- Add dtype=torch.long
+            num_classes=len(PYTORCH_LABELS)
+        )
+                
         return noisy_img, clean_img, label
