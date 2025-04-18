@@ -83,16 +83,6 @@ def test_vae(args):
     test_total_loss = 0
     batch_results = []
     model.eval()
-    # with torch.no_grad():
-    #     for noisy_images, clean_images, _ in test_progress_bar:
-    #         noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
-    #         denoised_images, mean, log_variance = model(noisy_images)
-    #         loss = model.loss_function(denoised_images, clean_images, mean, log_variance, BETA_WEIGHTAGE) 
-    #         test_total_loss += loss.item()
-    #         psnr_value = psnr(denoised_images, clean_images).item()
-    #         ssim_value = ssim(denoised_images, clean_images).item()
-    #         test_progress_bar.set_description(f"Loss: {test_total_loss/len(test_dataloader):.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f}")
-    
     with torch.no_grad():
         for batch_idx, (noisy_images, clean_images, _) in enumerate(test_progress_bar):
             noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
@@ -228,15 +218,6 @@ def visualize_uncertainties(clean_img, noisy_img, recon_img, epistemic, save_pat
     ax_line.set_ylabel("Uncertainty")
     ax_line.grid(True, alpha=0.3)
     ax_line.legend()
-
-    # plot cdf
-    # cdf = np.linspace(0, 1, len(e_sorted))
-    # ax4 = plt.subplot(gs[4])
-    # ax4.plot(e_sorted, cdf, color='green', linewidth=2)
-    # ax4.set_title("CDF of Uncertainty")
-    # ax4.set_xlabel("Uncertainty")
-    # ax4.set_ylabel("Cumulative Fraction")
-    # ax4.grid(True, alpha=0.3)
 
     # plot a histogram of uncertainty distribution
     ax5 = plt.subplot(gs[5])

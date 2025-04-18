@@ -69,7 +69,7 @@ class VAE(nn.Module):
         
         return dec_output, mean, log_variance
 
-    def loss_function(self, denoised_x, clean_x, mean, log_variance):
+    def loss_function(self, denoised_x, clean_x, mean, log_variance, beta_weightage):
         reconstruction_loss = F.mse_loss(denoised_x, clean_x)
         kl_divergence_loss = -0.5 * torch.mean(1 + log_variance - mean.pow(2) - log_variance.exp())
-        return reconstruction_loss + kl_divergence_loss
+        return reconstruction_loss + beta_weightage * kl_divergence_loss

@@ -229,15 +229,6 @@ def visualize_uncertainties(clean_img, noisy_img, recon_img, epistemic, save_pat
     ax_line.grid(True, alpha=0.3)
     ax_line.legend()
 
-    # plot cdf
-    # cdf = np.linspace(0, 1, len(e_sorted))
-    # ax4 = plt.subplot(gs[4])
-    # ax4.plot(e_sorted, cdf, color='green', linewidth=2)
-    # ax4.set_title("CDF of Uncertainty")
-    # ax4.set_xlabel("Uncertainty")
-    # ax4.set_ylabel("Cumulative Fraction")
-    # ax4.grid(True, alpha=0.3)
-
     # plot a histogram of uncertainty distribution
     ax5 = plt.subplot(gs[5])
     ax5.hist(e_flat, bins=50, color='skyblue', log=True)
