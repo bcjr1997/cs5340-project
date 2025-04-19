@@ -6,7 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import torch
-import pandas as pd
+from uuid import uuid4
 import torchvision.transforms.v2 as transforms_v2
 from model import VAE
 from utils.dataset.nih import NIHChestDataset
@@ -159,9 +159,25 @@ def deep_ensemble_test(args):
             epistemic_uncertainty = mean_stack.var(dim=0)
             aleatoric_uncertainty = var_stack.mean(dim=0)
             total_uncertainty = epistemic_uncertainty + aleatoric_uncertainty
-        
-            visualize_uncertainties(noisy_images, final_prediction, epistemic_uncertainty, aleatoric_uncertainty, total_uncertainty, SAVE_PATH)
-    
+            
+            num_samples_to_visualize = min(5, noisy_images.shape[0])
+            random_indices = np.random.choice(noisy_images.shape[0], num_samples_to_visualize, replace=False)
+            
+            image_save_path = os.path.join(SAVE_PATH, 'figures')
+            if not os.path.exists(image_save_path):
+                os.makedirs(image_save_path)
+
+            for idx in random_indices:
+                filename = f"{uuid4().hex}.jpg"
+                visualize_uncertainties(
+                    input_img=noisy_images[idx],
+                    recon_img=final_prediction[idx],
+                    epistemic=epistemic_uncertainty[idx],
+                    aleatoric=aleatoric_uncertainty[idx],
+                    total=total_uncertainty[idx],
+                    save_path=os.path.join(image_save_path, filename)
+                )
+                
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Test Script')
     # Data and Save Location
