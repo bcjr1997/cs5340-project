@@ -132,13 +132,6 @@ def deep_ensemble_test(args):
         
         # Progress Bar
         test_progress_bar = tqdm(test_dataloader)
-        
-        # Metrics
-        psnr = PeakSignalNoiseRatio().to(DEVICE)
-        ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(DEVICE)
-        
-        # History
-        history = {"epoch": [], "test_loss": [], "test_psnr": [], "test_ssim": []}
 
         # Eval Model
         for noisy_images, clean_images, _ in test_progress_bar:
