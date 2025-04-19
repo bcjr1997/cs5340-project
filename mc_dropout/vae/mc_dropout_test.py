@@ -174,7 +174,6 @@ def test_vae(args):
                 num_samples_to_visualize = min(10, batch_size)
                 random_indices = np.random.choice(batch_size, num_samples_to_visualize, replace=False)
                 
-                
                 figure_save_path = os.path.join(SAVE_PATH, "figures")
                 if not os.path.exists(figure_save_path):
                     os.makedirs(figure_save_path)
