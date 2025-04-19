@@ -77,3 +77,40 @@ class VAE(nn.Module):
         reconstruction_loss = F.mse_loss(denoised_x, clean_x)
         kl_divergence_loss = -0.5 * torch.mean(1 + log_variance - mean.pow(2) - log_variance.exp())
         return reconstruction_loss + kl_divergence_loss
+    
+    def samples_for_UQ(self, x, T=5):
+        samples = []
+        # Encoder
+        enc_l1 = self.encoder_l1(x)
+        enc_l2 = self.encoder_l2(enc_l1)
+        enc_l3 = self.encoder_l3(enc_l2)
+        enc_l4 = self.encoder_l4(enc_l3)
+        enc_l5 = self.encoder_l5(enc_l4)
+
+        # Latent Vector
+        batch_size = x.shape[0]
+        encoder = enc_l5.view(batch_size, -1)
+        mean, log_variance = self.mu(encoder), self.logvar(encoder)
+
+        for _ in range(T):
+            standard_deviation = torch.exp(0.5 * log_variance)
+            epsilon = torch.randn_like(standard_deviation)
+            z = mean + epsilon * standard_deviation
+
+            dec_input = self.decoder_input(z)
+            dec_input = dec_input.view(batch_size, 32 * 16, 7, 7)
+
+            # Decoder
+            dec_l1 = self.decoder_l1(dec_input)
+            dec_l2 = self.decoder_l2(torch.cat([dec_l1, enc_l4], dim=1))
+            dec_l3 = self.decoder_l3(torch.cat([dec_l2, enc_l3], dim=1))
+            dec_l4 = self.decoder_l4(torch.cat([dec_l3, enc_l2], dim=1))
+            dec_l5 = self.decoder_l5(torch.cat([dec_l4, enc_l1], dim=1))
+
+            samples.append(dec_l5)
+
+        samples_stacks = torch.stack(samples)
+        samples_mean = samples_stacks.mean(dim=0)
+        samples_var = samples_stacks.var(dim=0)
+
+        return samples_mean, samples_var
