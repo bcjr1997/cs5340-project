@@ -5,7 +5,7 @@ env
 datasets
 
 # Script outputs
-*model_outputs
+*_outputs
 
 
 # PyCache
