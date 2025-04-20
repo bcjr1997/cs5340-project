@@ -35,7 +35,7 @@ def preprocess_dataset(args):
                     img_path = os.path.join(label_path, image_name)
                     img = cv2.imread(img_path, cv2.IMREAD_GRAYSCALE)  # Ensure grayscale loading
                     images.append(img)
-                    labels.append(label)
+                    labels.append(int(label))
             curr_save_path = os.path.join(SAVE_PATH, model, noise_level)
             os.makedirs(curr_save_path, exist_ok=True)
             denoised_images = np.array(images)
