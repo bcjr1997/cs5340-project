@@ -12,7 +12,8 @@ from utils.dataset.nih import NIHChestDataset
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from tqdm import tqdm
-from torchvision.transforms.v2 import RandomHorizontalFlip, ToTensor, Compose
+# from torchvision.transforms.v2 import RandomHorizontalFlip, Compose, RandomRotation, RandomAffine, Normalize
+from torchvision import transforms
 from torch.utils.data import random_split
 
 
@@ -43,18 +44,29 @@ def train_classifier(args):
         
     # Prepare Model
     num_classes = 12
-    model = models.resnet50(pretrained=False)
+    model = models.resnet18(pretrained=False)
     model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
     model.fc = nn.Sequential(
-        nn.Dropout(p=0.6),
+        nn.Dropout(p=0.5),
         nn.Linear(model.fc.in_features, num_classes)
     )
     model = model.to(DEVICE)
     
     # Transform
-    transform = Compose([
-        RandomHorizontalFlip(p=0.5),
-        ToTensor()
+    # transform = Compose([
+    #     RandomHorizontalFlip(p=0.5),
+    #     RandomRotation(degrees=10),
+    #     RandomAffine(degrees=0, translate=(0.05, 0.05)),
+    #     Normalize(mean=[0.5], std=[0.5])
+    # ])
+
+    transform = transforms.Compose([
+        transforms.ToPILImage(),              # Convert from NumPy/tensor to PIL
+        transforms.Resize((224, 224)),        # ResNet size
+        transforms.RandomHorizontalFlip(),
+        transforms.RandomRotation(10),
+        transforms.ToTensor(),                # Back to tensor
+        transforms.Normalize(mean=[0.5], std=[0.5])
     ])
     
     # Prepare Dataset
@@ -68,19 +80,20 @@ def train_classifier(args):
     test_dataloader = DataLoader(test_set, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, pin_memory=True)
 
     # Optimizer
-    optimizer = Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = Adam(model.parameters(), lr=LEARNING_RATE, weight_decay=1e-5)
     
     # Criterion
     criterion = nn.CrossEntropyLoss()
     
     # Training Loop
-    model.train()
     history = {
         'epoch': [],
+        'mode': [],
         'accuracy': [],
         'loss': []
     }
     for epoch in range(NUM_EPOCHS):
+        model.train()
         correct, dataset_length, total_loss = 0, 0, 0
         progress_bar = tqdm(train_dataloader)
         for batch_images, batch_labels in progress_bar:
@@ -106,40 +119,36 @@ def train_classifier(args):
         history['epoch'].append(epoch + 1)
         history['accuracy'].append((correct / dataset_length) * 100)
         history['loss'].append(total_loss)
-        
-    df = pd.DataFrame(history)
-    df.to_json(os.path.join(SAVE_PATH, 'train.json'))
+        history['mode'].append('train')
             
-    # Test Loop
-    model.eval()
-    history = {
-        'accuracy': [],
-        'loss': []
-    }
-    with torch.no_grad():
-        progress_bar = tqdm(test_dataloader)
-        correct, dataset_length, total_loss = 0, 0, 0
-        for batch_images, batch_labels in progress_bar:
-            batch_images, batch_labels = batch_images.to(DEVICE), batch_labels.to(DEVICE)
-            
-            # Convert one-hot to class indices
-            trues = torch.argmax(batch_labels, dim=1).long()
-            
-            outputs = model(batch_images)
-            loss = criterion(outputs, trues)
-            
-            preds = torch.argmax(outputs, dim=1)
-            correct += (preds == trues).sum().item()
-            dataset_length += trues.size(0)
-            total_loss += loss.item()
-            
-            progress_bar.set_description(f"Test | Accuracy: {(correct / dataset_length) * 100} | Loss: {total_loss}")
-            
-        history['accuracy'].append((correct / dataset_length) * 100)
-        history['loss'].append(total_loss)
-            
-    df = pd.DataFrame(history)
-    df.to_json(os.path.join(SAVE_PATH, 'test.json'))
+        # Test Loop
+        model.eval()
+        with torch.no_grad():
+            progress_bar = tqdm(test_dataloader)
+            correct, dataset_length, total_loss = 0, 0, 0
+            for batch_images, batch_labels in progress_bar:
+                batch_images, batch_labels = batch_images.to(DEVICE), batch_labels.to(DEVICE)
+                
+                # Convert one-hot to class indices
+                trues = torch.argmax(batch_labels, dim=1).long()
+                
+                outputs = model(batch_images)
+                loss = criterion(outputs, trues)
+                
+                preds = torch.argmax(outputs, dim=1)
+                correct += (preds == trues).sum().item()
+                dataset_length += trues.size(0)
+                total_loss += loss.item()
+                
+                progress_bar.set_description(f"Test | Epoch: {epoch + 1} | Accuracy: {(correct / dataset_length) * 100} | Loss: {total_loss}")
+                
+            history['epoch'].append(epoch + 1)
+            history['accuracy'].append((correct / dataset_length) * 100)
+            history['loss'].append(total_loss)
+            history['mode'].append('test')
+                
+        df = pd.DataFrame(history)
+        df.to_json(os.path.join(SAVE_PATH, 'eval.json'))
 
 
 if __name__ == '__main__':
@@ -151,8 +160,8 @@ if __name__ == '__main__':
 
     # Training Configuration
     parser.add_argument('--epochs', type=int, default=30)
-    parser.add_argument('--learning_rate', type=float, default=1e-4)
-    parser.add_argument('--batch_size', type=int, default=128)
+    parser.add_argument('--learning_rate', type=float, default=3e-4)
+    parser.add_argument('--batch_size', type=int, default=64)
     parser.add_argument('--num_workers', type=int, default=4)
     parser.add_argument('--device', type=str, default='cuda')
     args = parser.parse_args()
