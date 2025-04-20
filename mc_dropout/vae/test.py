@@ -107,7 +107,7 @@ def train_vae(args):
         ssim = StructuralSimilarityIndexMeasure(data_range=1.0).to(DEVICE)
         
         # History
-        history = {"epoch": [], "test_loss": [], "test_psnr": [], "test_ssim": []}
+        history = {"test_loss": [], "test_psnr": [], "test_ssim": []}
 
         # Train Model
         model.eval()
