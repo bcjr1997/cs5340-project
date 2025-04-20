@@ -12,7 +12,7 @@ from utils.dataset.nih import NIHChestDataset
 from torch.utils.data import DataLoader
 from torch.optim import Adam
 from tqdm import tqdm
-from torchvision import transforms
+from torchvision.transforms.v2 import RandomHorizontalFlip, ToTensor, Compose
 from torch.utils.data import random_split
 
 
@@ -45,12 +45,16 @@ def train_classifier(args):
     num_classes = 12
     model = models.resnet50(pretrained=False)
     model.conv1 = nn.Conv2d(1, 64, kernel_size=7, stride=2, padding=3, bias=False)
-    model.fc = nn.Linear(model.fc.in_features, num_classes)
+    model.fc = nn.Sequential(
+        nn.Dropout(p=0.6),
+        nn.Linear(model.fc.in_features, num_classes)
+    )
     model = model.to(DEVICE)
     
     # Transform
-    transform = transforms.Compose([
-        transforms.ToTensor()
+    transform = Compose([
+        RandomHorizontalFlip(p=0.5),
+        ToTensor()
     ])
     
     # Prepare Dataset
@@ -146,7 +150,7 @@ if __name__ == '__main__':
     parser.add_argument('--save_path', type=str, default=os.path.join('classification', 'model_outputs', 'clean'))
 
     # Training Configuration
-    parser.add_argument('--epochs', type=int, default=10)
+    parser.add_argument('--epochs', type=int, default=30)
     parser.add_argument('--learning_rate', type=float, default=1e-4)
     parser.add_argument('--batch_size', type=int, default=128)
     parser.add_argument('--num_workers', type=int, default=4)
