@@ -141,7 +141,7 @@ def deep_ensemble_test(args):
         test_dataset = NIHChestDataset(test_images, test_labels, transform, noisy_transform)
 
         # Prepare Dataloader
-        test_dataloader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, persistent_workers=True)
+        test_dataloader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS)
         
         # Progress Bar
         test_progress_bar = tqdm(test_dataloader)
@@ -189,10 +189,11 @@ def deep_ensemble_test(args):
                     save_path=os.path.join(image_save_path, filename),
                     to_save=idx in random_indices
                 )
-                history['epistemic'].append(e_sorted)
-                history['aleatoric'].append(a_sorted)
-                history['total'].append(t_sorted)
+                history['epistemic'].append(e_sorted.mean().item())
+                history['aleatoric'].append(a_sorted.mean().item())
+                history['total'].append(t_sorted.mean().item())
         
+        logging.info('Saving Results')
         result_df = pd.DataFrame(history)
         result_df.to_json(os.path.join(SAVE_PATH, 'results.json'))
                 
