@@ -6,6 +6,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
 import torch
+import pandas as pd
 from uuid import uuid4
 import torchvision.transforms.v2 as transforms_v2
 from model import VAE
@@ -21,60 +22,74 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
 
 def visualize_uncertainties(input_img, recon_img, epistemic,
-                            aleatoric, total, save_path="uncertainty_combined.png"):
-    # Create figure and custom layout
-    fig = plt.figure(figsize=(20, 5))
-    gs = gridspec.GridSpec(1, 6, width_ratios=[1, 1, 1, 1, 1, 2.5])  # Last panel wider
+                            aleatoric, total, save_path="uncertainty_combined.png", to_save=True):
+    if to_save == True:
+        # Create figure and custom layout
+        fig = plt.figure(figsize=(20, 5))
+        gs = gridspec.GridSpec(1, 6, width_ratios=[1, 1, 1, 1, 1, 2.5])  # Last panel wider
 
-    # Image displays
-    axs = [plt.subplot(gs[i]) for i in range(5)]
+        # Image displays
+        axs = [plt.subplot(gs[i]) for i in range(5)]
 
-    axs[0].imshow(input_img.squeeze().cpu(), cmap='gray')
-    axs[0].set_title("Input Image")
-    axs[0].axis('off')
+        axs[0].imshow(input_img.squeeze().cpu(), cmap='gray')
+        axs[0].set_title("Input Image")
+        axs[0].axis('off')
 
-    axs[1].imshow(recon_img.squeeze().cpu(), cmap='gray')
-    axs[1].set_title("Mean Prediction")
-    axs[1].axis('off')
+        axs[1].imshow(recon_img.squeeze().cpu(), cmap='gray')
+        axs[1].set_title("Mean Prediction")
+        axs[1].axis('off')
 
-    axs[2].imshow(epistemic.squeeze().cpu(), cmap='hot')
-    axs[2].set_title("Epistemic Uncertainty")
-    axs[2].axis('off')
+        axs[2].imshow(epistemic.squeeze().cpu(), cmap='hot')
+        axs[2].set_title("Epistemic Uncertainty")
+        axs[2].axis('off')
 
-    axs[3].imshow(aleatoric.squeeze().cpu(), cmap='hot')
-    axs[3].set_title("Aleatoric Uncertainty")
-    axs[3].axis('off')
+        axs[3].imshow(aleatoric.squeeze().cpu(), cmap='hot')
+        axs[3].set_title("Aleatoric Uncertainty")
+        axs[3].axis('off')
 
-    axs[4].imshow(total.squeeze().cpu(), cmap='hot')
-    axs[4].set_title("Total Uncertainty")
-    axs[4].axis('off')
+        axs[4].imshow(total.squeeze().cpu(), cmap='hot')
+        axs[4].set_title("Total Uncertainty")
+        axs[4].axis('off')
 
-    # Flatten uncertainties for line plot
-    e_flat = epistemic.squeeze().cpu().numpy().flatten()
-    a_flat = aleatoric.squeeze().cpu().numpy().flatten()
-    t_flat = total.squeeze().cpu().numpy().flatten()
+        # Flatten uncertainties for line plot
+        e_flat = epistemic.squeeze().cpu().numpy().flatten()
+        a_flat = aleatoric.squeeze().cpu().numpy().flatten()
+        t_flat = total.squeeze().cpu().numpy().flatten()
 
-    # Sort all based on total uncertainty
-    sort_idx = np.argsort(t_flat)
-    e_sorted = e_flat[sort_idx]
-    a_sorted = a_flat[sort_idx]
-    t_sorted = t_flat[sort_idx]
+        # Sort all based on total uncertainty
+        sort_idx = np.argsort(t_flat)
+        e_sorted = e_flat[sort_idx]
+        a_sorted = a_flat[sort_idx]
+        t_sorted = t_flat[sort_idx]
 
-    x = np.linspace(0, 1, len(e_flat))
+        x = np.linspace(0, 1, len(e_flat))
 
-    ax_line = plt.subplot(gs[5])
-    ax_line.plot(x, e_sorted, label="Epistemic", linestyle='-', linewidth=1.2, color='royalblue')
-    ax_line.plot(x, a_sorted, label="Aleatoric", linestyle='--', linewidth=1.2, color='orange')
-    ax_line.plot(x, t_sorted, label="Total", linestyle='-.', linewidth=1.5, color='green')
-    ax_line.set_title("Uncertainty (Flattened)")
-    ax_line.set_xlabel("Normalized Pixel Index")
-    ax_line.set_ylabel("Uncertainty")
-    ax_line.grid(True, alpha=0.3)
-    ax_line.legend()
+        ax_line = plt.subplot(gs[5])
+        ax_line.plot(x, e_sorted, label="Epistemic", linestyle='-', linewidth=1.2, color='royalblue')
+        ax_line.plot(x, a_sorted, label="Aleatoric", linestyle='--', linewidth=1.2, color='orange')
+        ax_line.plot(x, t_sorted, label="Total", linestyle='-.', linewidth=1.5, color='green')
+        ax_line.set_title("Uncertainty (Flattened)")
+        ax_line.set_xlabel("Normalized Pixel Index")
+        ax_line.set_ylabel("Uncertainty")
+        ax_line.grid(True, alpha=0.3)
+        ax_line.legend()
 
-    plt.tight_layout()
-    plt.savefig(save_path, dpi=500)
-    plt.close()
+        plt.tight_layout()
+        plt.savefig(save_path, dpi=500)
+        plt.close()
+    else:
+        # Flatten uncertainties for line plot
+        e_flat = epistemic.squeeze().cpu().numpy().flatten()
+        a_flat = aleatoric.squeeze().cpu().numpy().flatten()
+        t_flat = total.squeeze().cpu().numpy().flatten()
+
+        # Sort all based on total uncertainty
+        sort_idx = np.argsort(t_flat)
+        e_sorted = e_flat[sort_idx]
+        a_sorted = a_flat[sort_idx]
+        t_sorted = t_flat[sort_idx]
+    
+    return e_sorted, a_sorted, t_sorted
 
 def deep_ensemble_test(args):
     # Argparse
@@ -134,8 +149,14 @@ def deep_ensemble_test(args):
         test_progress_bar = tqdm(test_dataloader)
 
         # Eval Model
-        for noisy_images, clean_images, _ in test_progress_bar:
+        history = {
+            'epistemic': [],
+            'aleatoric': [],
+            'total': []
+        }
+        for noisy_images, clean_images, labels in test_progress_bar:
             noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
+            labels = torch.argmax(labels, dim = 1).cpu().numpy()
                 
             model_means, model_vars = [], []
             for model in ensemble_models:
@@ -155,22 +176,28 @@ def deep_ensemble_test(args):
             
             num_samples_to_visualize = min(5, noisy_images.shape[0])
             random_indices = np.random.choice(noisy_images.shape[0], num_samples_to_visualize, replace=False)
-            
-            image_save_path = os.path.join(SAVE_PATH, 'figures')
-            if not os.path.exists(image_save_path):
-                os.makedirs(image_save_path)
 
-            for idx in random_indices:
+            for idx in range(noisy_images.shape[0]):
                 filename = f"{uuid4().hex}.jpg"
-                visualize_uncertainties(
+                image_save_path = os.path.join(SAVE_PATH, 'figures', f"{labels[idx]}")
+                if not os.path.exists(image_save_path):
+                    os.makedirs(image_save_path)
+                e_sorted, a_sorted, t_sorted = visualize_uncertainties(
                     input_img=noisy_images[idx],
                     recon_img=final_prediction[idx],
                     epistemic=epistemic_uncertainty[idx],
                     aleatoric=aleatoric_uncertainty[idx],
                     total=total_uncertainty[idx],
-                    save_path=os.path.join(image_save_path, filename)
+                    save_path=os.path.join(image_save_path, filename),
+                    to_save=idx in random_indices
                 )
-                
+                history['epistemic'].append(e_sorted)
+                history['aleatoric'].append(a_sorted)
+                history['total'].append(t_sorted)
+        
+        result_df = pd.DataFrame(history)
+        result_df.to_json(os.path.join(SAVE_PATH, 'results.json'))
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Model Test Script')
     # Data and Save Location
