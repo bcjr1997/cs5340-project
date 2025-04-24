@@ -144,7 +144,7 @@ def test_vae(args):
                 mean_prediction = predictions.mean(dim=0)           
 
                 # variance across MC_PASSES
-                uncertainty = predictions.var(dim=0)
+                epistemic = predictions.var(dim=0)
 
                 # Aggregate mean and logvar across MC passes
                 means = torch.cat(means, dim=0)              # [MC_PASSES, B, latent_dim]
@@ -158,16 +158,16 @@ def test_vae(args):
                 ssim_value = ssim(mean_prediction, clean_images).item()
 
                 # Calculate average uncertainty for the batch (mean over all pixels and channels)
-                avg_uncertainty = uncertainty.mean().item()
-                max_uncertainty = uncertainty.max().item()
+                avg_epistemic_uncertainty = epistemic.mean().item()
+                max_epistemic_uncertainty = epistemic.max().item()
                 
                 history['test_loss'].append(loss)
                 history['batch_size'].append(noisy_images.shape[0])
                 history['test_psnr'].append(psnr_value)
                 history['test_ssim'].append(ssim_value)
-                history['max_uncertainty'].append(max_uncertainty)
-                history['avg_uncertainty'].append(avg_uncertainty)
-                test_progress_bar.set_description(f"Loss: {loss:.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f} Max Uncertainty: {max_uncertainty:.4f}")
+                history['max_epistemic_uncertainty'].append(max_epistemic_uncertainty)
+                history['avg_epistemic_uncertainty'].append(avg_epistemic_uncertainty)
+                test_progress_bar.set_description(f"Loss: {loss:.4f}, PSNR: {psnr_value:.4f} SSIM: {ssim_value:.4f} Max Uncertainty: {max_epistemic_uncertainty:.4f}")
 
                 # Optionally, perform visualization for a few random samples
                 batch_size = clean_images.shape[0]
@@ -184,7 +184,7 @@ def test_vae(args):
                         clean_img = clean_images[idx],
                         noisy_img = noisy_images[idx],
                         recon_img = mean_prediction[idx],
-                        epistemic = uncertainty[idx],
+                        epistemic = epistemic[idx],
                         save_path = save_file
                     )
             

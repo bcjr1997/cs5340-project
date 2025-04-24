@@ -6,6 +6,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+import random
 import torchvision.transforms.v2 as transforms_v2
 from model import VAE
 from utils.dataset.nih import NIHChestDataset
@@ -19,6 +20,15 @@ from torchmetrics.image import PeakSignalNoiseRatio, StructuralSimilarityIndexMe
 # Logger setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
+
+def set_seed(seed):
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)  # if using multi-GPU
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True  # for reproducibility
+    torch.backends.cudnn.benchmark = False     # disable optimization that introduces randomness
 
 def save_images(noisy, clean, denoised, labels, save_path):
     # Save the Images 
@@ -98,6 +108,8 @@ def train_vae(args):
         # Prepare Dataset
         test_images, test_labels = np.load(TEST_IMAGES_PATH), np.load(TEST_LABELS_PATH)
         test_dataset = NIHChestDataset(test_images, test_labels, transform, noisy_transform)
+        
+        set_seed(42)
 
         # Prepare Dataloader
         test_dataloader = DataLoader(test_dataset, BATCH_SIZE, shuffle=True, num_workers=NUM_WORKERS, pin_memory=True)
