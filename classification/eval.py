@@ -16,7 +16,6 @@ from tqdm import tqdm
 from torchvision import transforms
 from torch.utils.data import random_split
 
-
 # Logger setup
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)

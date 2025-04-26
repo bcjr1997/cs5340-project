@@ -125,9 +125,9 @@ def test_vae(args):
         }
         model.eval()
         with torch.no_grad():
-            for batch_idx, (noisy_images, clean_images, _) in enumerate(test_progress_bar):
+            for batch_idx, (noisy_images, clean_images, labels) in enumerate(test_progress_bar):
                 noisy_images, clean_images = noisy_images.to(DEVICE), clean_images.to(DEVICE)
-                
+                labels = labels.detach().cpu().numpy()
                 # Perform MC_PASSES forward passes with dropout enabled
                 predictions = []
                 means = []
@@ -174,11 +174,11 @@ def test_vae(args):
                 num_samples_to_visualize = min(10, batch_size)
                 random_indices = np.random.choice(batch_size, num_samples_to_visualize, replace=False)
                 
-                figure_save_path = os.path.join(SAVE_PATH, "figures")
-                if not os.path.exists(figure_save_path):
-                    os.makedirs(figure_save_path)
-                
                 for idx in random_indices:
+                    curr_label = np.argmax(labels[idx])
+                    figure_save_path = os.path.join(SAVE_PATH, "figures", f"{curr_label}")
+                    if not os.path.exists(figure_save_path):
+                        os.makedirs(figure_save_path)
                     save_file = os.path.join(figure_save_path, f"uncertainty_batch_{batch_idx}_sample_{idx}.png")
                     visualize_uncertainties(
                         clean_img = clean_images[idx],
